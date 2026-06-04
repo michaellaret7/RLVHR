@@ -1,0 +1,44 @@
+# Secrets / environment
+.env
+.env.*
+!.env.example
+
+# uv / virtualenv
+.venv/
+venv/
+.uv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Caches
+.cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Hugging Face / datasets / model caches
+.hf_cache/
+hf_cache/
+wandb/
+
+# Training artifacts / checkpoints
+checkpoints/
+outputs/
+runs/
+*.pt
+*.pth
+*.safetensors
+*.ckpt
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

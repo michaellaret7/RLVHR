@@ -1,0 +1,37 @@
+"""Per-token log-probabilities.
+
+This is the piece the article walks through in detail ("Step 1: Shifting",
+"Step 2: Log Softmax", "Step 3: Gather"). Given a forward pass over a batch of
+full sequences, it returns the log-probability the model assigned to each token
+that was actually generated. Every algorithm in algorithms/ reuses this.
+"""
+
+import torch
+import torch.nn.functional as F
+
+
+def compute_token_log_probs(model, input_ids, attention_mask, completion_mask):
+    """Return (token_log_probs, shift_mask).
+
+    token_log_probs: (batch, seq_len-1) log-prob of each actual next token.
+    shift_mask:      (batch, seq_len-1) 1.0 on completion tokens, 0.0 elsewhere.
+    """
+    # Forward pass WITH gradients
+    outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+    logits = outputs.logits
+
+    # Step 1: shift so logits[t] predicts token[t+1]
+    shift_logits = logits[:, :-1, :].contiguous()
+    shift_labels = input_ids[:, 1:].contiguous()
+    shift_mask = completion_mask[:, 1:].contiguous()
+
+    # Step 2: log-softmax over the vocab
+    log_probs = F.log_softmax(shift_logits, dim=-1)
+
+    # Step 3: gather the log-prob of the token that was actually generated
+    token_log_probs = log_probs.gather(
+        dim=-1,
+        index=shift_labels.unsqueeze(-1),
+    ).squeeze(-1)
+
+    return token_log_probs, shift_mask
