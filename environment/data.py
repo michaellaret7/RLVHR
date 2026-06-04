@@ -29,16 +29,11 @@ def load_humaneval():
 if __name__ == "__main__":
     train_problems, eval_problems, train_prompts = load_humaneval()
 
-    print(f"Train problems: {len(train_problems)}")
-    print(f"Eval problems:  {len(eval_problems)}")
-    print(f"Train prompts:  {len(train_prompts)}")
-
-    print("\n" + "=" * 80)
-    print("FIRST TRAIN PROBLEM")
-    print("=" * 80)
-    p = train_problems[0]
-    print(f"\ntask_id: {p['task_id']}")
-    print(f"entry_point: {p['entry_point']}")
-    print(f"\n--- prompt ---\n{p['prompt']}")
-    print(f"\n--- canonical_solution ---\n{p['canonical_solution']}")
-    print(f"\n--- test ---\n{p['test']}")
+    print("-" * 80 + " Prompt " + "-" * 80)
+    print(eval_problems[0]["prompt"])
+    print("-" * 80 + " Test " + "-" * 80)
+    print(eval_problems[0]["test"])
+    print("-" * 80 + " Canonical Solution " + "-" * 80)
+    print(eval_problems[0]["canonical_solution"])
+    print("-" * 80 + " Entry Point " + "-" * 80)
+    print(eval_problems[0]["entry_point"])

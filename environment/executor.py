@@ -9,17 +9,22 @@ with a timeout so a bad generation (infinite loop, crash) can't hang training.
 """
 
 import multiprocessing as mp
-
+from data import load_humaneval
 
 def _run(code: str, test: str, entry_point: str, queue):
     """Child-process worker: exec code + test, push ('ok'/'fail', error)."""
     try:
         env = {"__name__": "__main__"}
+
+        # execute the passed code and the test code
         exec(code, env)
         exec(test, env)
+
         # HumanEval tests define `check(candidate)`; call it on the function.
         env["check"](env[entry_point])
+
         queue.put((True, None))
+        
     except Exception as e:  # noqa: BLE001 - any failure means the test didn't pass
         queue.put((False, repr(e)))
 
@@ -45,3 +50,18 @@ class HumanEvalExecutor:
         if not queue.empty():
             return queue.get()
         return False, "no result"
+
+if __name__ == "__main__":
+    train_problems, eval_problems, train_prompts = load_humaneval() 
+
+    executor = HumanEvalExecutor()
+
+    code = eval_problems[0]["prompt"] + eval_problems[0]["canonical_solution"]
+
+    passed, error = executor.execute_test(
+        code,
+        eval_problems[0]["test"],
+        eval_problems[0]["entry_point"],
+    )
+
+    print(passed, error)

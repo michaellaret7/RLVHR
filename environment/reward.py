@@ -25,7 +25,9 @@ class HumanEvalReward:
     def __call__(self, prompts: List[str], completions: List[str]):
         if self.current_problem is None:
             raise ValueError("Must set problem first")
+
         rewards = []
+
         for prompt, completion in zip(prompts, completions):
             code = extract_code_with_prompt(
                 prompt,
@@ -43,4 +45,5 @@ class HumanEvalReward:
             )
             reward = 1.0 if passed else 0.0
             rewards.append(reward)
+            
         return torch.tensor(rewards, dtype=torch.float32).unsqueeze(-1)
