@@ -38,7 +38,6 @@ def evaluate_model(
         completions = []
 
         with torch.no_grad():
-
             inputs = tokenizer(
                 problem["prompt"],
                 return_tensors="pt",

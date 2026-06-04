@@ -16,17 +16,22 @@ def _run(code: str, test: str, entry_point: str, queue):
     try:
         env = {"__name__": "__main__"}
 
-        # execute the passed code and the test code
+        # Add the function objects to the env so the entry_point is available
+        # Add the returned code object to the env and the check function object to the env
+        # The code func obj is whats returned by the llm
         exec(code, env)
         exec(test, env)
 
         # HumanEval tests define `check(candidate)`; call it on the function.
+        # Thats why entry point is necessary, because we need to call the check function with the entry point function name
+        # This line right here is what calls the actual written func obj from the llm through the check function obj
+        # Simple example: env("def x(n): return n*n", env) to run it you would call env["x"](2) the result would be 4
         env["check"](env[entry_point])
 
-        queue.put((True, None))
+        queue.put((True, None)) # add the test reuslt to the queue
         
     except Exception as e:  # noqa: BLE001 - any failure means the test didn't pass
-        queue.put((False, repr(e)))
+        queue.put((False, repr(e))) # add the test result to the queue
 
 
 class HumanEvalExecutor:
@@ -34,21 +39,31 @@ class HumanEvalExecutor:
 
     def __init__(self, timeout: float = 5.0):
         self.timeout = timeout
-
+    
+    # Take the output code from the llm and the test dunc object from the corresponding problem
+    # and test to see if the code passes the test
     def execute_test(self, code: str, test: str, entry_point: str):
         """Return (passed: bool, error: str | None)."""
         queue = mp.Queue()
-        proc = mp.Process(target=_run, args=(code, test, entry_point, queue))
-        proc.start()
-        proc.join(self.timeout)
 
+        proc = mp.Process(target=_run, args=(code, test, entry_point, queue))
+
+        # start the process of running the run func
+        proc.start()
+        
+        # wait for the process to finish or timeout
+        proc.join(self.timeout)
+        
         if proc.is_alive():
+            # if the process is still running after the timeout period, terminate it
             proc.terminate()
             proc.join()
-            return False, "timeout"
+
+            return False, "timeout" # return false and the error message
 
         if not queue.empty():
             return queue.get()
+            
         return False, "no result"
 
 if __name__ == "__main__":
