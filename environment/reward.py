@@ -9,7 +9,7 @@ from typing import List
 
 import torch
 
-from rewards.extraction import extract_code_with_prompt
+from environment.extraction import extract_code_with_prompt
 
 
 class HumanEvalReward:

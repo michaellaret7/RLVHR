@@ -36,19 +36,23 @@ the article's tables.
 
 ## Layout
 
+Folders mirror the RL agent–environment loop the article describes:
+
 ```
 config.py            TrainingConfig (generation + training hyperparameters)
-model.py             load Qwen base model + tokenizer
-data.py              load HumanEval, 50 train / 30 eval split
-logprobs.py          per-token log-probs (shift -> log_softmax -> gather)
 evaluation.py        evaluate_model, pass@1 / pass@k
 
-rewards/
+environment/         "the world": the task and how a completion is scored
+  data.py            load HumanEval, 50 train / 30 eval split
   extraction.py      extract_code_with_prompt  (regex code extractor)
   executor.py        HumanEvalExecutor         (sandboxed exec + timeout)
   reward.py          HumanEvalReward           (pass/fail -> reward tensor)
 
-algorithms/          one self-contained training loop each
+policy/              "the agent": the LLM and how we read it
+  model.py           load Qwen base model + tokenizer
+  logprobs.py        per-token log-probs (shift -> log_softmax -> gather)
+
+algorithms/          "the learning rule": one self-contained training loop each
   policy_gradient.py loss = -log_prob * reward
   reinforce.py       + mean baseline -> advantage
   reinforce_kl.py    + KL penalty vs a frozen reference model
