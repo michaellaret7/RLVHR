@@ -30,7 +30,12 @@ from environment.reward import HumanEvalReward
 
 
 def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
+    # Initialize the optimizer
+    optimizer = torch.optim.Adam(
+        model.parameters(), 
+        lr=config.learning_rate
+    )
+
     # Map prompt -> problem so we can set the reward's current problem.
     problem_by_prompt = {p["prompt"]: p for p in train_problems}
 
@@ -39,21 +44,33 @@ def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
 
     for epoch in range(config.num_epochs):
         print(f"EPOCH {epoch + 1}/{config.num_epochs}")
+
+        # Randomly sample prompts for the epoch
         epoch_prompts = np.random.choice(
-            train_prompts, size=config.prompts_per_epoch, replace=False
+            train_prompts, 
+            size=config.prompts_per_epoch, 
+            replace=False
         )
+
+        # Loop through each prompt in the epoch
         for prompt in epoch_prompts:
+
+            # Set the problem for the reward function class to the current prompt
             reward_fn.set_problem(problem_by_prompt[prompt])
 
             # Step 1: Generate completions (no gradients)
             all_completions = []
             all_sequences = []
             all_prompt_lengths = []
+
             model.eval()
+
             with torch.no_grad():
+                # Tokenize the prompt 
                 prompt_tokens = tokenizer(prompt, return_tensors="pt", padding=False)
                 prompt_ids = prompt_tokens.input_ids.to(device)
                 prompt_length = prompt_ids.shape[1]
+
                 for _ in range(config.generations_per_prompt):
                     outputs = model.generate(
                         prompt_ids,
@@ -63,6 +80,7 @@ def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
                         top_p=config.top_p,
                         pad_token_id=tokenizer.eos_token_id,
                     )
+                    
                     full_sequence = outputs[0]
                     completion_only = full_sequence[prompt_length:]
                     completion_text = tokenizer.decode(
@@ -140,8 +158,13 @@ if __name__ == "__main__":
     train(model, tokenizer, train_problems, train_prompts, reward_fn, config)
 
     summary = evaluate_model(
-        model, tokenizer, eval_problems, reward_fn,
-        num_samples=SAMPLES_PER_PROBLEM, max_new_tokens=256,
-        temperature=0.7, top_p=0.9,
+        model, 
+        tokenizer, 
+        eval_problems,
+        reward_fn,
+        num_samples=SAMPLES_PER_PROBLEM,
+        max_new_tokens=256,
+        temperature=0.7, 
+        top_p=0.9,
     )
     print_summary("VANILLA POLICY GRADIENT RESULTS", summary)

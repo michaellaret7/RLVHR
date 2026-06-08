@@ -9,7 +9,7 @@ with a timeout so a bad generation (infinite loop, crash) can't hang training.
 """
 
 import multiprocessing as mp
-from data import load_humaneval
+from environment.data import load_humaneval
 
 def _run(code: str, test: str, entry_point: str, queue):
     """Child-process worker: exec code + test, push ('ok'/'fail', error)."""

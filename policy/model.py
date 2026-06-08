@@ -17,10 +17,16 @@ def load_model_and_tokenizer(model_name: str = MODEL_NAME):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=torch.bfloat16,
+        dtype=torch.bfloat16,
         device_map="auto",
     )
     # Many causal LMs have no pad token; reuse EOS so padding works.
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     return model, tokenizer
+
+
+if __name__ == "__main__":
+    model, tokenizer = load_model_and_tokenizer()
+    print(model)
+    print(tokenizer)
