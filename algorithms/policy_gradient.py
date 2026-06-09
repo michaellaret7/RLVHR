@@ -46,10 +46,18 @@ def train(
 
     # Map prompt -> problem so we can set the reward's current problem.
     problem_by_prompt = {p["prompt"]: p for p in train_problems}
+    print(problem_by_prompt)
 
-    training_stats = {"step": [], "loss": [], "avg_reward": [], "avg_completion_length": []}
+    training_stats = {
+        "step": [],
+        "loss": [],
+        "avg_reward": [],
+        "avg_completion_length": []
+    }
+
     global_step = 0
 
+    # Begin the epoch loop for the number of epochs specified in the config
     for epoch in range(config.num_epochs):
         print(f"EPOCH {epoch + 1}/{config.num_epochs}")
 
@@ -119,13 +127,6 @@ def train(
                 all_prompt_lengths, 
                 tokenizer
             )
-
-            # print("-------------------------------- INPUT IDS --------------------------------")
-            # print(input_ids)
-            # print("-------------------------------- ATTENTION MASK --------------------------------")
-            # print(attention_mask)
-            # print("-------------------------------- COMPLETION MASK --------------------------------")
-            # print(completion_mask)
 
             token_log_probs, shift_mask = compute_token_log_probs(
                 model, 

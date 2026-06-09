@@ -141,3 +141,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Functions: max 50 lines, single responsibility.
 - Classes: max 100 lines, one concept.
 - Group code by feature/responsibility.
+
+# Question Answering 
+
+- When answering a question always answer concisely, simply, and from first principles unless told otherwise
+- Provide examples as well
