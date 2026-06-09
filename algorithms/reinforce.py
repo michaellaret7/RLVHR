@@ -48,31 +48,28 @@ def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
             reward_fn.set_problem(problem_by_prompt[prompt])
 
             # Step 1: Generate completions (no gradients)
-            all_completions = []
-            all_sequences = []
-            all_prompt_lengths = []
             model.eval()
             with torch.no_grad():
                 prompt_tokens = tokenizer(prompt, return_tensors="pt", padding=False)
                 prompt_ids = prompt_tokens.input_ids.to(device)
                 prompt_length = prompt_ids.shape[1]
-                for _ in range(config.generations_per_prompt):
-                    outputs = model.generate(
-                        prompt_ids,
-                        max_new_tokens=config.max_new_tokens,
-                        do_sample=True,
-                        temperature=config.temperature,
-                        top_p=config.top_p,
-                        pad_token_id=tokenizer.eos_token_id,
-                    )
-                    full_sequence = outputs[0]
-                    completion_only = full_sequence[prompt_length:]
-                    completion_text = tokenizer.decode(
-                        completion_only, skip_special_tokens=True
-                    )
-                    all_completions.append(completion_text)
-                    all_sequences.append(full_sequence)
-                    all_prompt_lengths.append(prompt_length)
+
+                # Generate all G completions in one batched call (the prompt is
+                # identical across samples), instead of G separate generate calls.
+                outputs = model.generate(
+                    prompt_ids,
+                    max_new_tokens=config.max_new_tokens,
+                    do_sample=True,
+                    temperature=config.temperature,
+                    top_p=config.top_p,
+                    num_return_sequences=config.generations_per_prompt,
+                    pad_token_id=tokenizer.eos_token_id,
+                )
+                all_sequences = list(outputs)  # G rows, all the same length
+                all_completions = tokenizer.batch_decode(
+                    outputs[:, prompt_length:], skip_special_tokens=True
+                )
+                all_prompt_lengths = [prompt_length] * config.generations_per_prompt
 
             # Step 2: Compute rewards
             prompts_list = [prompt] * config.generations_per_prompt

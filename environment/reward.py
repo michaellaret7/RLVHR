@@ -26,43 +26,30 @@ class HumanEvalReward:
         if self.current_problem is None:
             raise ValueError("Must set problem first")
 
-        # Initialize empty rewards list
+        test = self.current_problem["test"]
+        entry_point = self.current_problem["entry_point"]
+
+        # Extract the runnable code for every completion up front.
+        # None means the llm didn't return any code → reward 0.0.
+        codes = [
+            extract_code_with_prompt(prompt, completion, entry_point)
+            for prompt, completion in zip(prompts, completions)
+        ]
+
+        # Run every completion that produced code in one concurrent batch
+        # instead of one blocking process per completion.
+        runnable = [(code, test, entry_point) for code in codes if code is not None]
+        batch_results = iter(self.executor.execute_batch(runnable))
+
+        # Map results back onto the full list, scoring missing code as 0.0.
         rewards = []
-
-        # Loop through each prompt and completion pair 
-        # The prompt is the half written code the llm recieves 
-        # The completion is the comlpleted version of the code the llm returns
-        for prompt, completion in zip(prompts, completions):
-            # Extract the code from the prompt and completion and pass it to the code extractor
-            # This forms the full code snippet that the llm returned
-            code = extract_code_with_prompt(
-                prompt,
-                completion,
-                self.current_problem["entry_point"],
-            )
-
-            # If the code is None, then the llm didnt return any code
-            # So we give it a reward of 0.0
+        for code in codes:
             if code is None:
                 rewards.append(0.0)
-                continue
+            else:
+                passed, _error = next(batch_results)
+                rewards.append(1.0 if passed else 0.0)
 
-            # Execute test using the executor
-            # This tests the code snippet against the test harness
-            # Pass the code returned from the llm and the test func and the name of the function to the test executor
-            passed, error = self.executor.execute_test(
-                code,
-                self.current_problem["test"],
-                self.current_problem["entry_point"],
-            )
-
-            # If the code passed the test, then we give it a reward of 1.0
-            # Otherwise we give it a reward of 0.0
-            reward = 1.0 if passed else 0.0
-
-            # Add the reward to the rewards list
-            rewards.append(reward)
-            
         return torch.tensor(rewards, dtype=torch.float32).unsqueeze(-1)
 
 

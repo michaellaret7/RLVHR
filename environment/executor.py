@@ -9,7 +9,7 @@ with a timeout so a bad generation (infinite loop, crash) can't hang training.
 """
 
 import multiprocessing as mp
-from environment.data import load_humaneval
+import time
 
 def _run(code: str, test: str, entry_point: str, queue):
     """Child-process worker: exec code + test, push ('ok'/'fail', error)."""
@@ -63,11 +63,47 @@ class HumanEvalExecutor:
 
         if not queue.empty():
             return queue.get()
-            
+
         return False, "no result"
 
+    def execute_batch(self, items):
+        """Run several (code, test, entry_point) tests concurrently.
+
+        Each test still runs in its own process so a runaway generation can be
+        killed on timeout; launching them all together overlaps the spawn + run
+        cost instead of paying it once per completion. The timeout is shared, so
+        total wall-time is ~timeout rather than len(items) * timeout.
+
+        Returns a list of (passed, error) in the same order as `items`.
+        """
+        procs = []
+        for code, test, entry_point in items:
+            queue = mp.Queue()
+            proc = mp.Process(target=_run, args=(code, test, entry_point, queue))
+            proc.start()
+            procs.append((proc, queue))
+
+        start = time.monotonic()
+        results = []
+        for proc, queue in procs:
+            remaining = max(0.0, self.timeout - (time.monotonic() - start))
+            proc.join(remaining)
+
+            if proc.is_alive():
+                proc.terminate()
+                proc.join()
+                results.append((False, "timeout"))
+            elif not queue.empty():
+                results.append(queue.get())
+            else:
+                results.append((False, "no result"))
+
+        return results
+
 if __name__ == "__main__":
-    train_problems, eval_problems, train_prompts = load_humaneval() 
+    from environment.data import load_humaneval
+
+    train_problems, eval_problems, train_prompts = load_humaneval()
 
     executor = HumanEvalExecutor()
 

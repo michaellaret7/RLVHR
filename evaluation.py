@@ -35,7 +35,6 @@ def evaluate_model(
 
     for problem in tqdm(problems, desc="Evaluating"):
         reward_fn.set_problem(problem)
-        completions = []
 
         with torch.no_grad():
             inputs = tokenizer(
@@ -44,23 +43,22 @@ def evaluate_model(
                 padding=False,  # No padding for single sequence
             ).to(device)
 
-            for _ in range(num_samples):
-                outputs = model.generate(
-                    inputs.input_ids,
-                    attention_mask=inputs.attention_mask,  # pass mask explicitly
-                    max_new_tokens=max_new_tokens,
-                    do_sample=True,
-                    temperature=temperature,
-                    top_p=top_p,
-                    pad_token_id=tokenizer.eos_token_id,
-                )
+            # Generate all samples for this problem in one batched call.
+            outputs = model.generate(
+                inputs.input_ids,
+                attention_mask=inputs.attention_mask,  # pass mask explicitly
+                max_new_tokens=max_new_tokens,
+                do_sample=True,
+                temperature=temperature,
+                top_p=top_p,
+                num_return_sequences=num_samples,
+                pad_token_id=tokenizer.eos_token_id,
+            )
 
-                completion = tokenizer.decode(
-                    outputs[0][inputs.input_ids.shape[1]:],
-                    skip_special_tokens=True,
-                )
-
-                completions.append(completion)
+            completions = tokenizer.batch_decode(
+                outputs[:, inputs.input_ids.shape[1]:],
+                skip_special_tokens=True,
+            )
 
         # Compute rewards
         reward_values = reward_fn([problem["prompt"]] * num_samples, completions)
