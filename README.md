@@ -3,7 +3,10 @@
 A from-scratch, runnable companion to the article
 [*Fine-tuning LLMs using Reinforcement Learning*](rl_article.md) (Janu Verma).
 It fine-tunes `Qwen/Qwen2.5-Coder-1.5B-Instruct` to write Python that passes
-HumanEval unit tests, using **verifiable, test-based rewards** (RLVR).
+HumanEval+ unit tests, using **verifiable, test-based rewards** (RLVR).
+(HumanEval+ has ~80× more tests per problem than the original HumanEval, which
+makes the reward much harder to hack; switch `DATASET_ID` in
+`environment/data.py` to use the original.)
 
 Each concept from the article lives in its own file so you can read, run, and
 modify them in isolation.
@@ -31,7 +34,7 @@ Run everything from the repo root (it's a flat research layout, not a package).
 Each training script trains, then evaluates and prints a results block matching
 the article's tables.
 
-> The first run downloads the model (~3 GB) and the HumanEval dataset. A GPU is
+> The first run downloads the model (~3 GB) and the HumanEval+ dataset. A GPU is
 > strongly recommended; the code falls back to CPU but will be slow.
 
 ## Layout
@@ -43,7 +46,7 @@ config.py            TrainingConfig (generation + training hyperparameters)
 evaluation.py        evaluate_model, pass@1 / pass@k
 
 environment/         "the world": the task and how a completion is scored
-  data.py            load HumanEval, 50 train / 30 eval split
+  data.py            load HumanEval+, 50 train / 30 eval split
   extraction.py      extract_code_with_prompt  (regex code extractor)
   executor.py        HumanEvalExecutor         (sandboxed exec + timeout)
   reward.py          HumanEvalReward           (pass/fail -> reward tensor)
@@ -51,6 +54,7 @@ environment/         "the world": the task and how a completion is scored
 policy/              "the agent": the LLM and how we read it
   model.py           load Qwen base model + tokenizer
   logprobs.py        per-token log-probs (shift -> log_softmax -> gather)
+  batching.py        pad_batch: pad generations + build the masks logprobs needs
 
 algorithms/          "the learning rule": one self-contained training loop each
   policy_gradient.py loss = -log_prob * reward
@@ -77,6 +81,9 @@ The code mirrors the article. A few helpers the article names but doesn't print
 in full (`extract_code_with_prompt`, `HumanEvalExecutor`, and the KL training
 loop body) are implemented as the minimal version the article describes —
 regex extraction, `exec()` in a separate process with a timeout, and a KL
-penalty subtracted from the reward. Hyperparameters are intentionally tiny
-(`config.py`) for fast experimentation, so absolute numbers will vary from run
-to run.
+penalty subtracted from the reward. Two deliberate departures: the dataset is
+HumanEval+ rather than the original HumanEval (same problems, ~80× more tests,
+so the reward is harder to hack), and the `G` completions per prompt are
+generated in one batched `model.generate` call instead of a Python loop.
+Hyperparameters are intentionally tiny (`config.py`) for fast experimentation,
+so absolute numbers will vary from run to run.

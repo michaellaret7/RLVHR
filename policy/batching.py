@@ -9,7 +9,7 @@ with policy/logprobs.py.
 import torch
 import torch.nn.functional as F
 
-from model import device
+from policy.model import device
 from transformers import AutoTokenizer
 
 

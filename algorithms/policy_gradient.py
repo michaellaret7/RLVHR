@@ -116,15 +116,15 @@ def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
                 attention_mask, 
                 completion_mask
             )
-
+            
             # Step 4: REINFORCE loss — negative because PyTorch minimises.
             loss_per_token = (-token_log_probs * rewards) * shift_mask
             loss = loss_per_token.sum() / shift_mask.sum() # This is the number that is used to backpropagate
 
             # Step 5: Backprop and update
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            optimizer.zero_grad() # wipe the gradients from the previous step 
+            loss.backward() # compute the gradients
+            optimizer.step() # apply the gradients to the model
 
             # Logging
             global_step += 1

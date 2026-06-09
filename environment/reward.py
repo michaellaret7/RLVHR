@@ -9,7 +9,7 @@ from typing import List
 
 import torch
 
-from extraction import extract_code_with_prompt
+from environment.extraction import extract_code_with_prompt
 
 
 class HumanEvalReward:
@@ -56,8 +56,8 @@ class HumanEvalReward:
 if __name__ == "__main__":
     # Demo: run a few fake "model" completions through the reward function and
     # watch the verifiable reward come out (1.0 = passed the tests, 0.0 = failed).
-    from data import load_humaneval
-    from executor import HumanEvalExecutor
+    from environment.data import load_humaneval
+    from environment.executor import HumanEvalExecutor
 
     # Load the humaneval problems
     _, eval_problems, _ = load_humaneval()

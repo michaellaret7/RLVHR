@@ -47,8 +47,7 @@ def compute_token_log_probs(model, input_ids, attention_mask, completion_mask):
 if __name__ == "__main__":
     """Minimal: run compute_token_log_probs on the REAL model. uv run python scratch_real.py"""
     import torch
-    from model import load_model_and_tokenizer, device
-    from logprobs import compute_token_log_probs
+    from policy.model import load_model_and_tokenizer, device
 
     model, tok = load_model_and_tokenizer()
 
