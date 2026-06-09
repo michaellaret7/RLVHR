@@ -16,23 +16,29 @@ def compute_token_log_probs(model, input_ids, attention_mask, completion_mask):
     token_log_probs: (batch, seq_len-1) log-prob of each actual next token.
     shift_mask:      (batch, seq_len-1) 1.0 on completion tokens, 0.0 elsewhere.
     """
-    # Forward pass WITH gradients
-    # Model does a forward pass over the input tokens and returns the raw logits per token
-    outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-    logits = outputs.logits 
+    # Forward pass WITH gradients (scoring pass, not generation — the tokens
+    # are already decided; we need the graph so backprop can reach the weights).
+    # logits: (batch, seq_len, vocab) — position t holds 152k raw scores
+    # predicting token t+1.
+    logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
 
-    # Step 1: shift so logits[t] predicts token[t+1]
-    shift_logits = logits[:, :-1, :].contiguous()
-    shift_labels = input_ids[:, 1:].contiguous()
-    shift_mask = completion_mask[:, 1:].contiguous()
+    # Step 1: align predictions with targets. Position t's logits are scored
+    # against the token at t+1: last position predicts nothing → dropped;
+    # first token is predicted by nothing → dropped as a target.
+    predictions = logits[:, :-1, :]        # (batch, seq_len-1, vocab)
+    targets = input_ids[:, 1:]             # (batch, seq_len-1)
+    shift_mask = completion_mask[:, 1:]    # 1.0 where target is a completion token
 
-    # Step 2: log-softmax over the vocab
-    log_probs = F.log_softmax(shift_logits, dim=-1)
+    # Step 2: raw scores → log-probabilities over the vocab (a logit is only
+    # meaningful relative to the other 152k scores).
+    log_probs = F.log_softmax(predictions, dim=-1)
 
-    # Step 3: gather the log-prob of the token that was actually generated
+    # Step 3: for each position, look up the log-prob of the token that
+    # actually came next. The token id IS the index into the vocab dimension.
+    # Collapses (batch, seq_len-1, vocab) → (batch, seq_len-1).
     token_log_probs = log_probs.gather(
         dim=-1,
-        index=shift_labels.unsqueeze(-1),
+        index=targets.unsqueeze(-1),
     ).squeeze(-1)
 
     return token_log_probs, shift_mask

@@ -9,18 +9,18 @@ from typing import List
 
 import torch
 
-from environment.extraction import extract_code_with_prompt
+from extraction import extract_code_with_prompt
 
 
 class HumanEvalReward:
     """Reward function for HumanEval."""
 
     def __init__(self, executor):
-        self.executor = executor
+        self.executor = executor # initializes the code executor object
         self.current_problem = None
 
     def set_problem(self, problem):
-        self.current_problem = problem
+        self.current_problem = problem # sets the current problem
 
     def __call__(self, prompts: List[str], completions: List[str]):
         if self.current_problem is None:
@@ -56,23 +56,24 @@ class HumanEvalReward:
 if __name__ == "__main__":
     # Demo: run a few fake "model" completions through the reward function and
     # watch the verifiable reward come out (1.0 = passed the tests, 0.0 = failed).
-    from environment.data import load_humaneval
-    from environment.executor import HumanEvalExecutor
+    from data import load_humaneval
+    from executor import HumanEvalExecutor
 
     # Load the humaneval problems
     _, eval_problems, _ = load_humaneval()
-    problem = eval_problems[0]
-  
+    problems = eval_problems[:30]
+
     # Set the reward func with the code executor cls
     reward_fn = HumanEvalReward(HumanEvalExecutor())
-    reward_fn.set_problem(problem)  # Set the problem for the reward function
 
-    prompt = problem["prompt"] # The prompt is the half written code the llm recieves
-    completion = problem["canonical_solution"]  # The completion is the completed version of the code the llm returns
+    # Score each problem's canonical solution; all should pass (reward 1.0).
+    for problem in problems:
+        reward_fn.set_problem(problem)  # Set the problem for the reward function
 
-    # Pass both the prompt and the completion to the reward function
-    result = reward_fn([prompt], [completion])
+        prompt = problem["prompt"]  # The prompt is the half written code the llm recieves
+        completion = problem["canonical_solution"]  # The completion is the completed version of the code the llm returns
 
-    # Print the result from the reward func
-    print(result)                       # tensor([[1.]]) # The reward value is 1.0 because the code passed the test
-    print("reward value:", result.item())  # 1.0
+        # Pass both the prompt and the completion to the reward function
+        result = reward_fn([prompt], [completion])
+
+        print(f"{problem['task_id']}: reward value:", result.item())

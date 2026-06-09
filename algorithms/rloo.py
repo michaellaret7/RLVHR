@@ -18,13 +18,13 @@ import sys
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import TrainingConfig
 from environment.data import load_humaneval
 from evaluation import SAMPLES_PER_PROBLEM, evaluate_model, print_summary
+from policy.batching import pad_batch
 from policy.logprobs import compute_token_log_probs
 from policy.model import device, load_model_and_tokenizer
 from environment.executor import HumanEvalExecutor
@@ -115,7 +115,7 @@ def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
 
             # Step 4: Compute log probabilities (with gradients!)
             model.train()
-            input_ids, attention_mask, completion_mask = _pad_batch(
+            input_ids, attention_mask, completion_mask = pad_batch(
                 all_sequences, all_prompt_lengths, tokenizer
             )
             token_log_probs, shift_mask = compute_token_log_probs(
@@ -148,24 +148,6 @@ def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
                 print(f" Example completion: '{all_completions[0][:80]}...'")
 
     return training_stats
-
-
-def _pad_batch(all_sequences, all_prompt_lengths, tokenizer):
-    """Pad variable-length sequences and build completion + attention masks."""
-    max_len = max(seq.shape[0] for seq in all_sequences)
-    padded_ids = []
-    completion_masks = []
-    for seq, plen in zip(all_sequences, all_prompt_lengths):
-        padding_length = max_len - seq.shape[0]
-        padded = F.pad(seq, (0, padding_length), value=tokenizer.pad_token_id)
-        padded_ids.append(padded)
-        mask = torch.zeros(max_len, dtype=torch.float32, device=device)
-        mask[plen:seq.shape[0]] = 1.0
-        completion_masks.append(mask)
-    input_ids = torch.stack(padded_ids)
-    completion_mask = torch.stack(completion_masks)
-    attention_mask = (input_ids != tokenizer.pad_token_id).long()
-    return input_ids, attention_mask, completion_mask
 
 
 if __name__ == "__main__":

@@ -77,6 +77,7 @@ class HumanEvalExecutor:
         Returns a list of (passed, error) in the same order as `items`.
         """
         procs = []
+
         for code, test, entry_point in items:
             queue = mp.Queue()
             proc = mp.Process(target=_run, args=(code, test, entry_point, queue))
@@ -85,6 +86,7 @@ class HumanEvalExecutor:
 
         start = time.monotonic()
         results = []
+
         for proc, queue in procs:
             remaining = max(0.0, self.timeout - (time.monotonic() - start))
             proc.join(remaining)
@@ -93,6 +95,7 @@ class HumanEvalExecutor:
                 proc.terminate()
                 proc.join()
                 results.append((False, "timeout"))
+                
             elif not queue.empty():
                 results.append(queue.get())
             else:
