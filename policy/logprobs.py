@@ -6,8 +6,12 @@ full sequences, it returns the log-probability the model assigned to each token
 that was actually generated. Every algorithm in algorithms/ reuses this.
 """
 
+import logging
+
 import torch
 import torch.nn.functional as F
+
+logger = logging.getLogger(__name__)
 
 
 def compute_token_log_probs(model, input_ids, attention_mask, completion_mask):
@@ -16,6 +20,9 @@ def compute_token_log_probs(model, input_ids, attention_mask, completion_mask):
     token_log_probs: (batch, seq_len-1) log-prob of each actual next token.
     shift_mask:      (batch, seq_len-1) 1.0 on completion tokens, 0.0 elsewhere.
     """
+    logger.debug(
+        "scoring %d sequences of length %d", input_ids.shape[0], input_ids.shape[1]
+    )
     # Forward pass WITH gradients (scoring pass, not generation — the tokens
     # are already decided; we need the graph so backprop can reach the weights).
     # logits: (batch, seq_len, vocab) — position t holds 152k raw scores

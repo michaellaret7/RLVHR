@@ -4,6 +4,8 @@ From the article's "Base Model Performance" section. We use a small coder model
 so the whole loop runs on modest hardware.
 """
 
+import logging
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -11,9 +13,12 @@ MODEL_NAME = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+logger = logging.getLogger(__name__)
+
 
 def load_model_and_tokenizer(model_name: str = MODEL_NAME):
     """Load the base model and tokenizer."""
+    logger.info("loading %s on %s", model_name, device)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
@@ -23,6 +28,7 @@ def load_model_and_tokenizer(model_name: str = MODEL_NAME):
     # Many causal LMs have no pad token; reuse EOS so padding works.
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    logger.info("model loaded")
     return model, tokenizer
 
 

@@ -11,6 +11,8 @@ asserts now fails). It's a drop-in: same record keys, just a larger `test`
 field. Switch DATASET_ID back to "openai/openai_humaneval" for the original.
 """
 
+import logging
+
 from datasets import load_dataset
 
 DATASET_ID = "evalplus/humanevalplus"
@@ -18,6 +20,8 @@ DATASET_ID = "evalplus/humanevalplus"
 
 NUM_TRAIN = 50
 NUM_EVAL = 30
+
+logger = logging.getLogger(__name__)
 
 
 def load_humaneval():
@@ -32,7 +36,11 @@ def load_humaneval():
     eval_problems = [dataset[i] for i in range(NUM_TRAIN, NUM_TRAIN + NUM_EVAL)]
 
     train_prompts = [p["prompt"] for p in train_problems]
-    
+
+    logger.info(
+        "loaded %d problems (%d train / %d eval) from %s",
+        NUM_TRAIN + NUM_EVAL, NUM_TRAIN, NUM_EVAL, DATASET_ID,
+    )
     return train_problems, eval_problems, train_prompts
 
 

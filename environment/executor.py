@@ -8,8 +8,11 @@ The article runs tests "in milliseconds"; we run each test in a separate process
 with a timeout so a bad generation (infinite loop, crash) can't hang training.
 """
 
+import logging
 import multiprocessing as mp
 import time
+
+logger = logging.getLogger(__name__)
 
 def _run(code: str, test: str, entry_point: str, queue):
     """Child-process worker: exec code + test, push ('ok'/'fail', error)."""
@@ -76,6 +79,7 @@ class HumanEvalExecutor:
 
         Returns a list of (passed, error) in the same order as `items`.
         """
+        logger.debug("running %d tests (timeout %.1fs)", len(items), self.timeout)
         procs = []
 
         for code, test, entry_point in items:
@@ -101,6 +105,8 @@ class HumanEvalExecutor:
             else:
                 results.append((False, "no result"))
 
+        passed_count = sum(1 for passed, _ in results if passed)
+        logger.debug("tests done: %d/%d passed", passed_count, len(results))
         return results
 
 if __name__ == "__main__":

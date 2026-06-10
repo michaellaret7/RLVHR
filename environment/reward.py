@@ -5,11 +5,14 @@ This is the verifiable reward of RLVR: 1.0 if the generated code passes the
 problem's unit tests, 0.0 otherwise.
 """
 
+import logging
 from typing import List
 
 import torch
 
 from environment.extraction import extract_code_with_prompt
+
+logger = logging.getLogger(__name__)
 
 
 class HumanEvalReward:
@@ -39,6 +42,10 @@ class HumanEvalReward:
         # Run every completion that produced code in one concurrent batch
         # instead of one blocking process per completion.
         runnable = [(code, test, entry_point) for code in codes if code is not None]
+        logger.debug(
+            "scoring %d completions (%d with extractable code)",
+            len(completions), len(runnable),
+        )
         batch_results = iter(self.executor.execute_batch(runnable))
 
         # Map results back onto the full list, scoring missing code as 0.0.
@@ -50,6 +57,7 @@ class HumanEvalReward:
                 passed, _error = next(batch_results)
                 rewards.append(1.0 if passed else 0.0)
 
+        logger.debug("rewards: %d/%d passed", int(sum(rewards)), len(rewards))
         return torch.tensor(rewards, dtype=torch.float32).unsqueeze(-1)
 
 
