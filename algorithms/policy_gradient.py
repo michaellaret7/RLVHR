@@ -49,6 +49,7 @@ def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
         logger.info("EPOCH %d/%d", epoch + 1, config.num_epochs)
 
         # Randomly choose a set of prompts for the epoch at hand
+        # These will be the prompts that the model will be trained on for this epoch
         epoch_prompts = np.random.choice(
             train_prompts, 
             size=config.prompts_per_epoch, 
@@ -60,8 +61,8 @@ def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
         # So the model creates x amount of answers for each prompts and the model weights are bumped for each answer
         for prompt in epoch_prompts:
             # Set the problem for the reward function class to the current prompt
-            problem = problem_by_prompt[prompt]
-            reward_fn.set_problem(problem)
+            problem = problem_by_prompt[prompt] # pull the problem from the problem dict
+            reward_fn.set_problem(problem) # set the problem in the rewaerd func class
 
             logger.info(
                 "step %d | %s | generating %d completions",
@@ -81,7 +82,8 @@ def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
 
                 # Generate all G completions in one batched call. The prompt is
                 # identical across samples, so we just ask for G sequences —
-                # far faster than calling generate G times in a loop.
+                # far faster than calling generate G times in a loop. This is returning G completion attempts 
+                # all for the same prompt 
                 outputs = model.generate(
                     prompt_ids,
                     attention_mask=prompt_mask,  # explicit: pad token == EOS, so it can't be inferred
