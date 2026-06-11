@@ -144,5 +144,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 # Question Answering 
 
-- When answering a question always answer concisely, simply, and from first principles unless told otherwise
+- When answering a question always answer concisely, simply, briefly, and from first principles unless told otherwise
 - Provide examples as well
+- Your goal is to answer the questions with as few tokens as possible unless told otherwise
