@@ -10,12 +10,19 @@ with a timeout so a bad generation (infinite loop, crash) can't hang training.
 
 import logging
 import multiprocessing as mp
+import os
 import time
 
 logger = logging.getLogger(__name__)
 
 def _run(code: str, test: str, entry_point: str, queue):
     """Child-process worker: exec code + test, push ('ok'/'fail', error)."""
+    # Generated code often prints (self-tests, demos). Send the child's stdout
+    # and stderr to /dev/null so it can't write into the training log; failures
+    # still reach the parent through the queue.
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(devnull, 1)
+    os.dup2(devnull, 2)
     try:
         env = {"__name__": "__main__"}
 

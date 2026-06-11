@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import TrainingConfig
 from environment.data import load_humaneval
-from evaluation import SAMPLES_PER_PROBLEM, evaluate_model, print_summary
+from evaluation import SAMPLES_PER_PROBLEM, evaluate_model
 from policy.batching import pad_batch
 from policy.logprobs import compute_token_log_probs
 from policy.model import device, load_model_and_tokenizer
@@ -135,4 +135,8 @@ if __name__ == "__main__":
         num_samples=SAMPLES_PER_PROBLEM, max_new_tokens=256,
         temperature=0.7, top_p=0.9,
     )
-    print_summary("REINFORCE RESULTS", summary)
+    print(
+        f"REINFORCE RESULTS — Pass@1: {summary['pass_at_1']:.1%} | "
+        f"Pass@{SAMPLES_PER_PROBLEM}: {summary['pass_at_k']:.1%} | "
+        f"Avg reward: {summary['avg_reward']:.3f}"
+    )

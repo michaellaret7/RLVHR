@@ -10,6 +10,8 @@ dependencies = [
     "numpy>=1.26",
     "tqdm>=4.66",
     "accelerate>=1.13.0",
+    "vllm>=0.22 ; sys_platform == 'linux'",
+    "boto3>=1.43.27",
 ]
 
 # This is a flat research repo, not an installable package.
@@ -17,12 +19,13 @@ dependencies = [
 #   uv run python evaluation.py
 #   uv run python algorithms/reinforce.py
 
-# Pull torch from PyTorch's CUDA 12.8 index so it runs on the NVIDIA GPU
-# (the default PyPI wheel on Windows is CPU-only).
+# On Windows the default PyPI torch wheel is CPU-only, so pull torch from
+# PyTorch's CUDA 12.8 index there. On Linux the PyPI wheel is CUDA-enabled
+# (cu130) and is the exact build vLLM pins against, so use PyPI directly.
 [[tool.uv.index]]
 name = "pytorch-cu128"
 url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [tool.uv.sources]
-torch = { index = "pytorch-cu128" }
+torch = { index = "pytorch-cu128", marker = "sys_platform == 'win32'" }

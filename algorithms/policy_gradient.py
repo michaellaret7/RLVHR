@@ -22,17 +22,18 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import TrainingConfig
 from environment.data import load_humaneval
-from evaluation import SAMPLES_PER_PROBLEM, evaluate_model, print_summary
+from evaluation import SAMPLES_PER_PROBLEM, evaluate_model_vllm
 from policy.batching import pad_batch
 from policy.logprobs import compute_token_log_probs
 from policy.model import device, load_model_and_tokenizer
+from policy.vllm_rollout import create_llm, generate_rollouts, sync_weights
 from environment.executor import HumanEvalExecutor
 from environment.reward import HumanEvalReward
 
 logger = logging.getLogger(__name__)
 
 
-def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
+def train(model, llm, tokenizer, train_problems, train_prompts, reward_fn, config):
     # Initialize the optimizer
     optimizer = torch.optim.Adam(
         model.parameters(), 
@@ -69,38 +70,15 @@ def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
                 global_step + 1, problem["task_id"], config.generations_per_prompt,
             )
 
-            # Step 1: Generate completions (no gradients)
-            # Set the model to evaluation mode
-            model.eval()
+            # Step 1: Generate completions with vLLM (no gradients involved).
+            # The engine holds its own copy of the policy weights, kept current
+            # by the sync_weights call after each optimizer step (Step 6).
+            all_sequences, all_completions, prompt_length = generate_rollouts(llm, prompt, config)
+            all_prompt_lengths = [prompt_length] * config.generations_per_prompt
 
-            with torch.no_grad():
-                # Tokenize the prompt
-                prompt_tokens = tokenizer(prompt, return_tensors="pt", padding=False)
-                prompt_ids = prompt_tokens.input_ids.to(device)
-                prompt_mask = prompt_tokens.attention_mask.to(device)
-                prompt_length = prompt_ids.shape[1]
-
-                # Generate all G completions in one batched call. The prompt is
-                # identical across samples, so we just ask for G sequences —
-                # far faster than calling generate G times in a loop. This is returning G completion attempts 
-                # all for the same prompt 
-                outputs = model.generate(
-                    prompt_ids,
-                    attention_mask=prompt_mask,  # explicit: pad token == EOS, so it can't be inferred
-                    max_new_tokens=config.max_new_tokens,
-                    do_sample=True, # sample from the model so the model can explore and learn
-                    temperature=config.temperature,
-                    top_p=config.top_p,
-                    num_return_sequences=config.generations_per_prompt, # number of completions to generate for each prompt
-                    pad_token_id=tokenizer.eos_token_id,
-                )
-
-                # outputs: (G, prompt_length + new_tokens), all rows same length.
-                all_sequences = list(outputs)                  # prompt + answer token IDs (to re-run for gradients)
-                all_completions = tokenizer.batch_decode(       # answer only, as text (for scoring)
-                    outputs[:, prompt_length:], skip_special_tokens=True
-                )
-                all_prompt_lengths = [prompt_length] * config.generations_per_prompt
+            # Free the engine's GPU memory (weights + KV cache) — the gradient
+            # pass below needs the room. sync_weights wakes it back up.
+            llm.sleep(level=2)
 
             # Step 2: Compute rewards
             prompts_list = [prompt] * config.generations_per_prompt # Create a list of the same prompt for each generation
@@ -131,6 +109,14 @@ def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
             optimizer.zero_grad() # wipe the gradients from the previous step
             loss.backward() # compute the gradients
             optimizer.step() # apply the gradients to the model
+            # Drop this step's gradients (~3 GB) now, not at the next zero_grad —
+            # the engine is about to wake up and needs the memory.
+            optimizer.zero_grad(set_to_none=True)
+
+            # Step 6: Wake the engine and push the updated weights into it.
+            # optimizer.step() only mutated the training copy; without this the
+            # next generation would sample from a stale policy.
+            sync_weights(llm, model)
 
             logger.info(
                 "step %d | passed %d/%d | loss %.4f",
@@ -144,10 +130,9 @@ def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
             global_step += 1
 
             if global_step % config.log_every == 0:
-                avg_length = (
-                    (outputs[:, prompt_length:] != tokenizer.eos_token_id)
-                    .sum(dim=1).float().mean().item()
-                )
+                avg_length = float(np.mean(
+                    [seq.shape[0] - prompt_length for seq in all_sequences]
+                ))
                 logger.info("avg completion length: %.1f tokens", avg_length)
                 logger.info("example completion: %r", all_completions[0][:80])
 
@@ -165,19 +150,25 @@ if __name__ == "__main__":
 
     config = TrainingConfig()
     model, tokenizer = load_model_and_tokenizer()
+    llm = create_llm()  # rollout engine; starts with the same base weights
     train_problems, eval_problems, train_prompts = load_humaneval()
     reward_fn = HumanEvalReward(HumanEvalExecutor())
 
-    train(model, tokenizer, train_problems, train_prompts, reward_fn, config)
+    train(model, llm, tokenizer, train_problems, train_prompts, reward_fn, config)
 
-    summary = evaluate_model(
-        model, 
-        tokenizer, 
+    # The engine was synced after the last optimizer step, so it already holds
+    # the final policy — evaluate through it.
+    summary = evaluate_model_vllm(
+        llm,
         eval_problems,
         reward_fn,
         num_samples=SAMPLES_PER_PROBLEM,
         max_new_tokens=256,
-        temperature=0.7, 
+        temperature=0.7,
         top_p=0.9,
     )
-    print_summary("VANILLA POLICY GRADIENT RESULTS", summary)
+    print(
+        f"VANILLA POLICY GRADIENT RESULTS — Pass@1: {summary['pass_at_1']:.1%} | "
+        f"Pass@{SAMPLES_PER_PROBLEM}: {summary['pass_at_k']:.1%} | "
+        f"Avg reward: {summary['avg_reward']:.3f}"
+    )
