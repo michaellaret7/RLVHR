@@ -10,15 +10,15 @@ from dataclasses import dataclass
 @dataclass
 class TrainingConfig:
     # Generation settings
-    max_new_tokens: int = 40
+    max_new_tokens: int = 256
     temperature: float = 0.8
     top_p: float = 0.9
 
     # Training settings
-    num_epochs: int = 1
-    prompts_per_epoch: int = 10      # Small for fast experimentation
-    generations_per_prompt: int = 10  # Sample G completions per prompt
-    learning_rate: float = 1e-6
+    num_epochs: int = 3
+    prompts_per_epoch: int = 30      # Full train set each epoch
+    generations_per_prompt: int = 6  # Sample G completions per prompt
+    learning_rate: float = 2e-6
 
     # Baseline (REINFORCE) — used by algorithms that subtract a baseline
     use_baseline: bool = True
