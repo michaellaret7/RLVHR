@@ -130,13 +130,13 @@ if __name__ == "__main__":
 
     from vllm import LLM
 
-    from policy.model import MODEL_NAME
+    from config import TrainingConfig
 
     _, eval_problems, _ = load_humaneval()
 
     reward_fn = HumanEvalReward(HumanEvalExecutor())
 
-    llm = LLM(model=MODEL_NAME, max_model_len=2048)
+    llm = LLM(model=TrainingConfig().model_name, max_model_len=2048)
     baseline_results = evaluate_model_vllm(
         llm, eval_problems, reward_fn,
         num_samples=SAMPLES_PER_PROBLEM,

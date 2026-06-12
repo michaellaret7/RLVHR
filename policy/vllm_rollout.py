@@ -40,14 +40,17 @@ from vllm import LLM, SamplingParams
 logging.getLogger("vllm.triton_utils.jit_monitor").setLevel(logging.ERROR)
 
 from config import TrainingConfig
-from policy.model import MODEL_NAME, device
+from policy.model import device
 
 
-def create_llm(gpu_memory_utilization: float = 0.2) -> LLM:
+def create_llm(model_name: str, gpu_memory_utilization: float = 0.2) -> LLM:
     """Rollout engine, memory-capped to fit beside the training model,
-    gradients, optimizer state, and activations on one GPU."""
+    gradients, optimizer state, and activations on one GPU.
+
+    ``model_name`` must be the same model the training copy was loaded from
+    (pass ``config.model_name``) — weight sync breaks otherwise."""
     return LLM(
-        model=MODEL_NAME,
+        model=model_name,
         max_model_len=2048,
         gpu_memory_utilization=gpu_memory_utilization,
         enforce_eager=True,  # no CUDA graphs: saves memory
@@ -118,8 +121,8 @@ if __name__ == "__main__":
     from policy.model import load_model_and_tokenizer
 
     config = TrainingConfig()
-    llm = create_llm()
-    model, _ = load_model_and_tokenizer()
+    llm = create_llm(config.model_name)
+    model, _ = load_model_and_tokenizer(config.model_name)
 
     sequences, completions, prompt_length = generate_rollouts(
         llm, "def fibonacci(n):", config

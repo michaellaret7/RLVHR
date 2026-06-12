@@ -9,15 +9,13 @@ import logging
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-MODEL_NAME = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
-
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 logger = logging.getLogger(__name__)
 
 
-def load_model_and_tokenizer(model_name: str = MODEL_NAME):
-    """Load the base model and tokenizer."""
+def load_model_and_tokenizer(model_name: str):
+    """Load a model and tokenizer by HF name or local path."""
     logger.info("loading %s on %s", model_name, device)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -38,6 +36,8 @@ def load_model_and_tokenizer(model_name: str = MODEL_NAME):
 
 
 if __name__ == "__main__":
-    model, tokenizer = load_model_and_tokenizer()
+    from config import TrainingConfig
+
+    model, tokenizer = load_model_and_tokenizer(TrainingConfig().model_name)
     print(model)
     print(tokenizer)

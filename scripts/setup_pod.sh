@@ -3,7 +3,7 @@
 # new terminal activate it automatically. Safe to re-run (idempotent).
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # --- 0. Make sure ~/.local/bin is on the PATH (claude + uv install there) ----
 export PATH="$HOME/.local/bin:$PATH"
@@ -32,6 +32,8 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 
 echo ">> Creating venv and installing dependencies (uv sync)..."
+# Storage layout: caches/model on the persistent volume, venv on local overlay.
+source /workspace/env.sh
 cd "$REPO_DIR"
 uv sync
 
@@ -52,14 +54,15 @@ for remote in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin
 done
 
 # --- 5. Auto-activate venv in every new terminal ----------------------------
-ACTIVATE_LINE="source \"$REPO_DIR/.venv/bin/activate\""
+ACTIVATE_LINE="source \"$UV_PROJECT_ENVIRONMENT/bin/activate\""
 if ! grep -qF "$ACTIVATE_LINE" "$HOME/.bashrc" 2>/dev/null; then
     {
         echo ""
-        echo "# Auto-activate RLVHR venv (added by setup_pod.sh)"
+        echo "# Storage layout: caches/model on the persistent volume, venv on local overlay"
+        echo "source /workspace/env.sh"
         echo "$ACTIVATE_LINE"
     } >> "$HOME/.bashrc"
-    echo ">> Added venv activation to ~/.bashrc"
+    echo ">> Added env.sh + venv activation to ~/.bashrc"
 else
     echo ">> venv activation already in ~/.bashrc"
 fi

@@ -14,11 +14,12 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-from s3_utils import download_dir_from_s3, model_leaf, scratch_dir, upload_dir_to_s3
+from infra.s3_utils import download_dir_from_s3, model_leaf, scratch_dir, upload_dir_to_s3
 
 logger = logging.getLogger(__name__)
 
 RL_WEIGHTS_ROOT = "rl_model_weights"
+MODELS_DIR = Path("models")
 
 
 def _resolve_bucket(bucket: str | None) -> str:
@@ -54,7 +55,18 @@ def save_weights_to_s3(
         model.save_pretrained(tmp)
         tokenizer.save_pretrained(tmp)
         upload_dir_to_s3(Path(tmp), bucket, prefix)
+        
     return prefix
+
+
+def _run_name(prefix: str) -> str:
+    """Local folder name for a saved-weights prefix: the S3 run directory.
+
+    'rl_model_weights/policy_gradient/<run>/final' -> '<run>'.
+    """
+    parts = prefix.strip("/").split("/")
+    leaf = parts[-1]
+    return parts[-2] if leaf == "final" or leaf.startswith("step-") else leaf
 
 
 def load_weights_from_s3(
@@ -62,12 +74,16 @@ def load_weights_from_s3(
     dest: str | None = None,
     bucket: str | None = None,
 ) -> str:
-    """Download a saved-weights prefix from S3 into a local dir.
+    """Download a saved-weights prefix from S3 into ``models/<run-name>``.
 
-    Returns the local path — hand it straight to ``load_model_and_tokenizer``.
+    Skips the download if the weights are already there. Returns the local
+    path — hand it straight to ``load_model_and_tokenizer``.
     """
     bucket = _resolve_bucket(bucket)
-    dest = Path(dest or f"./{prefix}")
+    dest = Path(dest) if dest else MODELS_DIR / _run_name(prefix)
+    if dest.is_dir() and any(dest.iterdir()):
+        logger.info("weights already at %s, skipping download", dest)
+        return str(dest)
     download_dir_from_s3(bucket, prefix, dest)
     logger.info("weights ready at %s", dest)
     return str(dest)

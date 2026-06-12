@@ -14,7 +14,7 @@ import sys
 
 import torch
 
-from checkpoint_s3 import load_weights_from_s3
+from infra.checkpoint_s3 import load_weights_from_s3
 from policy.model import device, load_model_and_tokenizer
 
 DEFAULT_S3 = (

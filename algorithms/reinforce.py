@@ -124,7 +124,7 @@ def train(model, tokenizer, train_problems, train_prompts, reward_fn, config):
 
 if __name__ == "__main__":
     config = TrainingConfig()
-    model, tokenizer = load_model_and_tokenizer()
+    model, tokenizer = load_model_and_tokenizer(config.model_name)
     train_problems, eval_problems, train_prompts = load_humaneval()
     reward_fn = HumanEvalReward(HumanEvalExecutor())
 

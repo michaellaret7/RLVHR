@@ -29,8 +29,8 @@ from policy.model import device, load_model_and_tokenizer
 from policy.vllm_rollout import create_llm, generate_rollouts, sync_weights
 from environment.executor import HumanEvalExecutor
 from environment.reward import HumanEvalReward
-from checkpoint_s3 import save_weights_to_s3
-from runpod_stats import log_pod_utilization
+from infra.checkpoint_s3 import save_weights_to_s3
+from infra.runpod_stats import log_pod_utilization
 
 logger = logging.getLogger(__name__)
 
@@ -155,11 +155,11 @@ if __name__ == "__main__":
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
     from dotenv import load_dotenv
-    load_dotenv()  # RUNPOD_API_KEY for pod-util logging, S3_* for weight upload
+    load_dotenv()  # RUNPOD_API_KEY for pod-util logging, S3_* for weight upload\
 
     config = TrainingConfig()
-    model, tokenizer = load_model_and_tokenizer()
-    llm = create_llm()  # rollout engine; starts with the same base weights
+    model, tokenizer = load_model_and_tokenizer(config.model_name)
+    llm = create_llm(config.model_name)  # rollout engine; same base weights
     train_problems, eval_problems, train_prompts = load_humaneval()
     reward_fn = HumanEvalReward(HumanEvalExecutor())
 

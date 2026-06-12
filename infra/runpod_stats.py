@@ -8,7 +8,7 @@ Credentials come from the environment (RunPod sets ``RUNPOD_POD_ID`` inside the
 pod automatically; you must supply ``RUNPOD_API_KEY`` yourself):
 
     export RUNPOD_API_KEY=...        # from runpod.io settings
-    uv run python runpod_stats.py    # pretty-prints the full info blob
+    uv run python infra/runpod_stats.py    # pretty-prints the full info blob
 
 The ``runtime`` block is ``None`` while the pod is stopped/starting — that is
 RunPod's behavior, not an error.

@@ -30,6 +30,7 @@ hf_cache/
 wandb/
 
 # Training artifacts / checkpoints
+models/
 checkpoints/
 outputs/
 runs/

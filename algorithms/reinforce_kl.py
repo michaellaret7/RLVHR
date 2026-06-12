@@ -145,9 +145,9 @@ def train(model, ref_model, tokenizer, train_problems, train_prompts, reward_fn,
 
 if __name__ == "__main__":
     config = TrainingConfig()
-    model, tokenizer = load_model_and_tokenizer()
+    model, tokenizer = load_model_and_tokenizer(config.model_name)
     # Frozen reference policy = a second copy of the base model.
-    ref_model, _ = load_model_and_tokenizer()
+    ref_model, _ = load_model_and_tokenizer(config.model_name)
     ref_model.eval()
     for p in ref_model.parameters():
         p.requires_grad_(False)

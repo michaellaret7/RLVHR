@@ -9,8 +9,10 @@ from dataclasses import dataclass
 
 @dataclass
 class TrainingConfig:
+    model_name: str = "Qwen/Qwen3-1.7B"
+
     # Generation settings
-    max_new_tokens: int = 256
+    max_new_tokens: int = 512
     temperature: float = 0.9
     top_p: float = 0.9
 
