@@ -12,6 +12,7 @@ dependencies = [
     "accelerate>=1.13.0",
     "vllm>=0.22 ; sys_platform == 'linux'",
     "boto3>=1.43.27",
+    "python-dotenv>=1.0",
 ]
 
 # This is a flat research repo, not an installable package.

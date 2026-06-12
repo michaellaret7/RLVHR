@@ -16,8 +16,8 @@ class TrainingConfig:
 
     # Training settings
     num_epochs: int = 5
-    prompts_per_epoch: int = 30      # Full train set each epoch
-    generations_per_prompt: int = 8  # Sample G completions per prompt
+    prompts_per_epoch: int = 40      # Full train set each epoch
+    generations_per_prompt: int = 6  # Sample G completions per prompt
     learning_rate: float = 2e-6
 
     # Baseline (REINFORCE) — used by algorithms that subtract a baseline

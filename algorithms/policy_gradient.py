@@ -29,6 +29,7 @@ from policy.model import device, load_model_and_tokenizer
 from policy.vllm_rollout import create_llm, generate_rollouts, sync_weights
 from environment.executor import HumanEvalExecutor
 from environment.reward import HumanEvalReward
+from runpod_stats import log_pod_utilization
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +131,9 @@ def train(model, llm, tokenizer, train_problems, train_prompts, reward_fn, confi
             # Logging
             global_step += 1
 
+            if global_step % 10 == 0:
+                log_pod_utilization(global_step)
+
             if global_step % config.log_every == 0:
                 avg_length = float(np.mean(
                     [seq.shape[0] - prompt_length for seq in all_sequences]
@@ -148,6 +152,9 @@ if __name__ == "__main__":
     )
     # Hugging Face libraries log every HTTP request at INFO; keep them quiet.
     logging.getLogger("httpx").setLevel(logging.WARNING)
+
+    from dotenv import load_dotenv
+    load_dotenv()  # RUNPOD_API_KEY for the pod-util logging
 
     config = TrainingConfig()
     model, tokenizer = load_model_and_tokenizer()
