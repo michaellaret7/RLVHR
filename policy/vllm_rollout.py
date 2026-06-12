@@ -16,31 +16,23 @@ and reloads the current policy. The cycle per training step:
     generate -> llm.sleep(2) -> backward/optimizer.step() -> sync_weights -> ...
 """
 
+import logging
 import os
 import sys
 
+# --- Setup that must run before the imports below ---
+# Repo-root imports (config, policy.*) need the root on sys.path.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# FlashInfer's JIT sampler needs ninja + a CUDA toolchain, absent on this box.
 os.environ.setdefault("VLLM_USE_FLASHINFER_SAMPLER", "0")
-# Keep the engine in this process so sync_weights can hand it live GPU tensors.
 os.environ.setdefault("VLLM_ENABLE_V1_MULTIPROCESSING", "0")
-# The engine sleeps/wakes every training step; at INFO vLLM logs ~6 lines per
-# step about it. Keep only warnings.
 os.environ.setdefault("VLLM_LOGGING_LEVEL", "WARNING")
-
-import logging
 
 import torch
 from vllm import LLM, SamplingParams
-
-# vLLM warns on every first-time Triton kernel JIT compile ("latency spike").
-# Irrelevant for a training loop and there's no env var for it; silence the one
-# logger it uses.
-logging.getLogger("vllm.triton_utils.jit_monitor").setLevel(logging.ERROR)
-
 from config import TrainingConfig
 from policy.model import device
+
+logging.getLogger("vllm.triton_utils.jit_monitor").setLevel(logging.ERROR)
 
 
 def create_llm(model_name: str, gpu_memory_utilization: float = 0.2) -> LLM:
@@ -56,7 +48,6 @@ def create_llm(model_name: str, gpu_memory_utilization: float = 0.2) -> LLM:
         enforce_eager=True,  # no CUDA graphs: saves memory
         enable_sleep_mode=True,  # lets the engine vacate the GPU during the gradient pass
     )
-
 
 def generate_rollouts(
     llm: LLM, 
@@ -77,13 +68,17 @@ def generate_rollouts(
         n=config.generations_per_prompt,
     )
 
+    # Generate n completions for the one prompt in one batched call to the llm
     output = llm.generate([prompt], sampling_params, use_tqdm=False)[0]
 
+    # Get the prompt token ids and the eos token id
     prompt_ids = list(output.prompt_token_ids)
     eos_id = llm.get_tokenizer().eos_token_id
 
+    # Create a list to store the sequences
     all_sequences = []
 
+    # Loop through the completions and store the sequences
     for o in output.outputs:
         completion_ids = list(o.token_ids)
         # vLLM strips the EOS token; restore it (HF generate keeps it) so the
@@ -97,8 +92,9 @@ def generate_rollouts(
 
     all_completions = [o.text for o in output.outputs]
 
-    return all_sequences, all_completions, len(prompt_ids)
+    prompt_length = len(prompt_ids)
 
+    return all_sequences, all_completions, prompt_length
 
 def sync_weights(llm: LLM, model) -> None:
     """Wake the sleeping engine and push the training model's current weights.
