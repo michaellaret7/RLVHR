@@ -29,6 +29,7 @@ from policy.model import device, load_model_and_tokenizer
 from policy.vllm_rollout import create_llm, generate_rollouts, sync_weights
 from environment.executor import HumanEvalExecutor
 from environment.reward import HumanEvalReward
+from checkpoint_s3 import save_weights_to_s3
 from runpod_stats import log_pod_utilization
 
 logger = logging.getLogger(__name__)
@@ -154,7 +155,7 @@ if __name__ == "__main__":
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
     from dotenv import load_dotenv
-    load_dotenv()  # RUNPOD_API_KEY for the pod-util logging
+    load_dotenv()  # RUNPOD_API_KEY for pod-util logging, S3_* for weight upload
 
     config = TrainingConfig()
     model, tokenizer = load_model_and_tokenizer()
@@ -163,6 +164,13 @@ if __name__ == "__main__":
     reward_fn = HumanEvalReward(HumanEvalExecutor())
 
     train(model, llm, tokenizer, train_problems, train_prompts, reward_fn, config)
+
+    # Persist the final policy to S3 — the trained weights die with the pod
+    # otherwise. Best-effort: a failed upload shouldn't lose the eval below.
+    try:
+        save_weights_to_s3(model, tokenizer, algorithm="policy_gradient")
+    except Exception as exc:
+        logger.warning("weight upload to S3 failed: %s", exc)
 
     # The engine was synced after the last optimizer step, so it already holds
     # the final policy — evaluate through it.

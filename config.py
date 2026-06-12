@@ -15,7 +15,7 @@ class TrainingConfig:
     top_p: float = 0.9
 
     # Training settings
-    num_epochs: int = 5
+    num_epochs: int = 2
     prompts_per_epoch: int = 40      # Full train set each epoch
     generations_per_prompt: int = 6  # Sample G completions per prompt
     learning_rate: float = 2e-6
