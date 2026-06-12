@@ -35,7 +35,12 @@ echo ">> Creating venv and installing dependencies (uv sync)..."
 cd "$REPO_DIR"
 uv sync
 
-# --- 3. Local tracking branches for all remote branches ----------------------
+# --- 3. Git identity ----------------------------------------------------------
+echo ">> Setting git user..."
+git config --global user.email "michaellaret7@gmail.com"
+git config --global user.name "michael laret"
+
+# --- 4. Local tracking branches for all remote branches ----------------------
 echo ">> Setting up local branches tracking origin..."
 git fetch --all --prune
 for remote in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin | grep -v '^origin/HEAD$'); do
@@ -46,7 +51,7 @@ for remote in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin
     fi
 done
 
-# --- 4. Auto-activate venv in every new terminal ----------------------------
+# --- 5. Auto-activate venv in every new terminal ----------------------------
 ACTIVATE_LINE="source \"$REPO_DIR/.venv/bin/activate\""
 if ! grep -qF "$ACTIVATE_LINE" "$HOME/.bashrc" 2>/dev/null; then
     {
