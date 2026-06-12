@@ -11,13 +11,13 @@ from dataclasses import dataclass
 class TrainingConfig:
     # Generation settings
     max_new_tokens: int = 256
-    temperature: float = 0.8
+    temperature: float = 0.9
     top_p: float = 0.9
 
     # Training settings
-    num_epochs: int = 3
+    num_epochs: int = 5
     prompts_per_epoch: int = 30      # Full train set each epoch
-    generations_per_prompt: int = 6  # Sample G completions per prompt
+    generations_per_prompt: int = 8  # Sample G completions per prompt
     learning_rate: float = 2e-6
 
     # Baseline (REINFORCE) — used by algorithms that subtract a baseline

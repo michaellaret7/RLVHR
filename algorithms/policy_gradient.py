@@ -109,9 +109,10 @@ def train(model, llm, tokenizer, train_problems, train_prompts, reward_fn, confi
             optimizer.zero_grad() # wipe the gradients from the previous step
             loss.backward() # compute the gradients
             optimizer.step() # apply the gradients to the model
+
             # Drop this step's gradients (~3 GB) now, not at the next zero_grad —
             # the engine is about to wake up and needs the memory.
-            optimizer.zero_grad(set_to_none=True)
+            optimizer.zero_grad(set_to_none=True)   
 
             # Step 6: Wake the engine and push the updated weights into it.
             # optimizer.step() only mutated the training copy; without this the
